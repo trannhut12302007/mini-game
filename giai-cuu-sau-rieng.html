@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chiến Dịch Giải Cứu Sầu Riêng - Logistics RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b1120;
+            color: #f8fafc;
+        }
+        /* Hiệu ứng chuyển cảnh mượt mà */
+        .fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Hiệu ứng nhấp nháy cảnh báo cho container */
+        @keyframes pulseBorder {
+            0%, 100% { border-color: rgba(245, 158, 11, 0.8); box-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
+            50% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        }
+        .cont-warning {
+            animation: pulseBorder 2s infinite;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/30 selection:bg-emerald-500 selection:text-white">
+
+    <!-- ==================== HEADER / DASHBOARD TRẠNG THÁI ==================== -->
+    <header id="dashboard-header" class="hidden sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 shadow-2xl">
+        <div class="max-w-6xl mx-auto px-4 py-3">
+            <!-- Top Row: Tiêu đề chiến dịch & Tiến độ chặng -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                        <i class="fa-solid fa-truck-fast text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm sm:text-base font-bold text-white tracking-wide uppercase">Trung Tâm Điều Hành Cửa Khẩu Hữu Nghị</h1>
+                        <p class="text-xs text-slate-400">Lô hàng: <span class="text-emerald-400 font-medium">10x40'RF Sầu Riêng Monthong & Ri6</span></p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                    <span id="stage-indicator" class="text-xs font-semibold text-amber-300">Chặng 1 / 5</span>
+                </div>
+            </div>
+
+            <!-- Middle Row: 3 Chỉ số sinh tồn -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 py-3">
+                <!-- Ngân sách -->
+                <div class="bg-slate-800/60 rounded-xl p-2.5 border border-slate-700/70">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sack-dollar text-amber-400"></i> Ngân sách xử lý
+                        </span>
+                        <span id="stat-budget-text" class="text-sm font-bold text-amber-400">$15,000</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+                        <div id="stat-budget-bar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <!-- Thời gian vàng -->
+                <div class="bg-slate-800/60 rounded-xl p-2.5 border border-slate-700/70">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-hourglass-half text-sky-400"></i> Thời gian vàng còn lại
+                        </span>
+                        <span id="stat-time-text" class="text-sm font-bold text-sky-400">120 giờ (5.0 ngày)</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+                        <div id="stat-time-bar" class="bg-gradient-to-r from-sky-500 to-cyan-400 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <!-- Độ tươi & Chất lượng -->
+                <div class="bg-slate-800/60 rounded-xl p-2.5 border border-slate-700/70">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-temperature-low text-emerald-400"></i> Độ tươi & Chất lượng
+                        </span>
+                        <span id="stat-freshness-text" class="text-sm font-bold text-emerald-400">100%</span>
+                    </div>
+                    <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+                        <div id="stat-freshness-bar" class="bg-gradient-to-r from-emerald-600 to-lime-400 h-2 rounded-full transition-all duration-500" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Trạng thái trực quan 10 Container -->
+            <div class="pt-2 border-t border-slate-800/80">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trạng thái 10 Container Lạnh (Reefer 40ft):</span>
+                    <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500/80 inline-block"></span> Đang kẹt</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span> Thông quan</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-rose-600 inline-block"></span> Hỏng / Trả về</span>
+                    </div>
+                </div>
+                <div id="containers-grid" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-2">
+                    <!-- Render bằng JS -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT AREA ==================== -->
+    <main class="flex-grow flex items-center justify-center p-4 sm:p-6">
+        <div class="w-full max-w-4xl">
+
+            <!-- 1. MÀN HÌNH MỞ ĐẦU (INTRO SCREEN) -->
+            <section id="screen-intro" class="fade-in bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                <div class="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
+
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 text-xs font-semibold uppercase tracking-wider mb-4">
+                    <i class="fa-solid fa-triangle-exclamation animate-bounce"></i> Tình Huống Khẩn Cấp Cửa Khẩu
+                </div>
+
+                <h1 class="text-2xl sm:text-4xl font-extrabold text-white leading-tight mb-4">
+                    CHIẾN DỊCH GIẢI CỨU <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-lime-300">10 CONTAINER SẦU RIÊNG</span> TẠI CỬA KHẨU HỮU NGHỊ
+                </h1>
+
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed mb-6">
+                    Bạn vừa được bổ nhiệm làm <strong class="text-white">Trưởng nhóm Điều hành Xuất nhập khẩu Khẩn cấp</strong>. Hiện tại, đoàn xe gồm <strong class="text-emerald-400">10 container lạnh 40 feet chứa 180 tấn sầu riêng Monthong & Ri6 tươi</strong> (trị giá hơn 18 tỷ VNĐ) đang bị ách tắc tại bãi kiểm hóa cửa khẩu Hữu Nghị - Bằng Tường.
+                </p>
+
+                <!-- Thông số nhiệm vụ -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4">
+                        <div class="text-amber-400 text-xl mb-1"><i class="fa-solid fa-wallet"></i></div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold">Ngân sách dự phòng</div>
+                        <div class="text-lg font-bold text-white">$15,000 USD</div>
+                        <p class="text-xs text-slate-400 mt-1">Dùng để xử lý phí lưu bãi, kiểm nghiệm, sang tải & đàm phán.</p>
+                    </div>
+                    <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4">
+                        <div class="text-sky-400 text-xl mb-1"><i class="fa-solid fa-clock"></i></div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold">Thời gian vàng</div>
+                        <div class="text-lg font-bold text-white">120 Giờ (5 Ngày)</div>
+                        <p class="text-xs text-slate-400 mt-1">Vượt quá mốc này, sầu riêng sẽ chín ép hàng loạt trong container.</p>
+                    </div>
+                    <div class="bg-slate-800/70 border border-slate-700/80 rounded-xl p-4">
+                        <div class="text-emerald-400 text-xl mb-1"><i class="fa-solid fa-snowflake"></i></div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold">Nhiệt độ bảo quản</div>
+                        <div class="text-lg font-bold text-white">13°C - 15°C</div>
+                        <p class="text-xs text-slate-400 mt-1">Phải duy trì chạy máy lạnh liên tục, giữ độ tươi tối thiểu > 60%.</p>
+                    </div>
+                </div>
+
+                <div class="bg-amber-950/30 border border-amber-500/30 rounded-xl p-4 mb-8 flex items-start gap-3">
+                    <i class="fa-solid fa-circle-info text-amber-400 mt-0.5"></i>
+                    <div class="text-xs sm:text-sm text-amber-200/90">
+                        <strong>Nhiệm vụ của bạn:</strong> Vượt qua <strong>5 chặng thử thách thực tế</strong> (từ hồ sơ GACC, kiểm nghiệm Cadimi/Vàng O, sự cố container lạnh, ùn tắc biên giới đến đàm phán thương lái Trung Quốc). Mỗi quyết định đều đánh đổi giữa <em>Tiền bạc - Thời gian - Chất lượng hàng hóa</em>.
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-lime-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/50 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 text-base cursor-pointer">
+                    <span>BẮT ĐẦU CHIẾN DỊCH GIẢI CỨU</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </section>
+
+            <!-- 2. MÀN HÌNH CHƠI GAME (STAGE SCREEN) -->
+            <section id="screen-stage" class="hidden fade-in bg-slate-900/95 border border-slate-800 rounded-2xl p-5 sm:p-8 shadow-2xl">
+                <!-- Nhãn chặng & Bối cảnh -->
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <span id="stage-badge" class="px-3 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                        CHẶNG 1: HỒ SƠ & MÃ SỐ GACC
+                    </span>
+                    <span id="stage-location" class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-dot text-rose-400"></i> Bãi kiểm hóa Hữu Nghị Quan
+                    </span>
+                </div>
+
+                <h2 id="stage-title" class="text-xl sm:text-2xl font-bold text-white mb-3 leading-snug">
+                    Tiêu đề tình huống
+                </h2>
+
+                <div id="stage-description" class="bg-slate-800/70 border-l-4 border-amber-500 rounded-r-xl p-4 text-slate-200 text-sm sm:text-base leading-relaxed mb-6">
+                    Mô tả chi tiết tình huống...
+                </div>
+
+                <!-- Danh sách phương án lựa chọn -->
+                <div class="mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Chọn phương án xử lý của bạn:
+                </div>
+                <div id="options-container" class="space-y-3">
+                    <!-- Các nút lựa chọn render bằng JS -->
+                </div>
+            </section>
+
+            <!-- 3. MÀN HÌNH PHẢN HỒI SAU MỖI CHẶNG (FEEDBACK MODAL / CARD) -->
+            <section id="screen-feedback" class="hidden fade-in bg-slate-900/95 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                <div class="flex items-center gap-3 mb-4">
+                    <div id="feedback-icon-box" class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold">Kết quả quyết định Chặng <span id="fb-stage-num">1</span></div>
+                        <h3 id="feedback-title" class="text-lg sm:text-xl font-bold text-white">Tiêu đề kết quả</h3>
+                    </div>
+                </div>
+
+                <p id="feedback-story" class="text-slate-300 text-sm sm:text-base leading-relaxed mb-5">
+                    Diễn biến thực tế sau khi bạn ra quyết định...
+                </p>
+
+                <!-- Biến động chỉ số -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                        <div class="text-[11px] text-slate-400 uppercase">Ngân sách</div>
+                        <div id="fb-delta-budget" class="text-sm sm:text-base font-bold mt-0.5">-$1,500</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                        <div class="text-[11px] text-slate-400 uppercase">Thời gian</div>
+                        <div id="fb-delta-time" class="text-sm sm:text-base font-bold mt-0.5">-12 giờ</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                        <div class="text-[11px] text-slate-400 uppercase">Độ tươi hàng</div>
+                        <div id="fb-delta-freshness" class="text-sm sm:text-base font-bold mt-0.5">-5%</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3 text-center">
+                        <div class="text-[11px] text-slate-400 uppercase">Container</div>
+                        <div id="fb-delta-containers" class="text-sm sm:text-base font-bold mt-0.5 text-emerald-400">Giữ nguyên 10</div>
+                    </div>
+                </div>
+
+                <!-- Bài học nghiệp vụ XNK -->
+                <div class="bg-sky-950/40 border border-sky-500/30 rounded-xl p-4 mb-6">
+                    <div class="flex items-center gap-2 text-sky-400 font-bold text-xs uppercase tracking-wider mb-1.5">
+                        <i class="fa-solid fa-graduation-cap"></i> Bài học nghiệp vụ Xuất Nhập Khẩu Nông Sản
+                    </div>
+                    <p id="feedback-lesson" class="text-xs sm:text-sm text-sky-100/90 leading-relaxed">
+                        Nội dung bài học...
+                    </p>
+                </div>
+
+                <button id="btn-next-stage" onclick="nextStage()" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <span>TIẾP TỤC CHẶNG TIẾP THEO</span>
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </section>
+
+            <!-- 4. MÀN HÌNH KẾT THÚC & TỔNG KẾT (ENDING SCREEN) -->
+            <section id="screen-ending" class="hidden fade-in bg-slate-900/95 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+                <div class="text-center mb-6">
+                    <div id="ending-badge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-widest mb-3">
+                        KẾT QUẢ CHIẾN DỊCH
+                    </div>
+                    <h2 id="ending-title" class="text-2xl sm:text-4xl font-extrabold text-white mb-2">
+                        TIÊU ĐỀ KẾT THÚC
+                    </h2>
+                    <p id="ending-subtitle" class="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto">
+                        Mô tả tổng quan kết quả giải cứu 10 container sầu riêng.
+                    </p>
+                </div>
+
+                <!-- Thống kê cuối cùng -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 text-center">
+                        <div class="text-xs text-slate-400 mb-1">Container cứu được</div>
+                        <div id="end-stat-cont" class="text-xl sm:text-2xl font-extrabold text-emerald-400">10 / 10</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 text-center">
+                        <div class="text-xs text-slate-400 mb-1">Ngân sách còn lại</div>
+                        <div id="end-stat-budget" class="text-xl sm:text-2xl font-extrabold text-amber-400">$6,500</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 text-center">
+                        <div class="text-xs text-slate-400 mb-1">Thời gian dư</div>
+                        <div id="end-stat-time" class="text-xl sm:text-2xl font-extrabold text-sky-400">36 giờ</div>
+                    </div>
+                    <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-3.5 text-center">
+                        <div class="text-xs text-slate-400 mb-1">Độ tươi xuất bán</div>
+                        <div id="end-stat-freshness" class="text-xl sm:text-2xl font-extrabold text-lime-400">82%</div>
+                    </div>
+                </div>
+
+                <!-- Bảng tổng kết nhật ký quyết định -->
+                <div class="mb-6">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-list text-emerald-400"></i> Nhật Ký & Phân Tích Quyết Định Của Bạn
+                    </h3>
+                    <div id="decision-history-list" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                        <!-- Render lịch sử lựa chọn bằng JS -->
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onclick="resetGame()" class="px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-lime-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>CHƠI LẠI & THỬ CHIẾN THUẬT KHÁC</span>
+                    </button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="text-center py-3 text-xs text-slate-500 border-t border-slate-900">
+        Mô phỏng nghiệp vụ Xuất Nhập Khẩu Nông Sản Việt - Trung | Logistics & Supply Chain Training
+    </footer>
+
+    <!-- ==================== JAVASCRIPT GAME ENGINE ==================== -->
+    <script>
+        // Dữ liệu kịch bản 5 chặng thực tế ngành xuất khẩu sầu riêng sang Trung Quốc
+        const STAGES = [
+            {
+                id: 1,
+                badge: "CHẶNG 1 / 5: HỒ SƠ & MÃ SỐ GACC",
+                location: "Cổng khai báo Hải quan Điện tử - Hữu Nghị",
+                title: "Sai lệch Mã số Cơ sở đóng gói (PHC) trên hệ thống GACC",
+                description: "Hải quan Trung Quốc thông báo hệ thống đối chiếu tự động phát hiện 3 container trong lô hàng khai báo Mã số cơ sở đóng gói (PHC) trên Giấy chứng nhận kiểm dịch thực vật (Phytosanitary Certificate) không trùng khớp với tên cơ sở trên tem nhãn dán trên thùng carton (do xưởng đóng gói dùng nhầm lô tem cũ của đối tác liên kết).",
+                options: [
+                    {
+                        id: "A",
+                        tag: "Phương án A • An toàn pháp lý",
+                        text: "Xin tạm dừng thông quan 3 cont lỗi, cử đội nhân công tại bãi cắt seal, bóc toàn bộ tem cũ và dán lại tem đúng mã PHC đã đăng ký GACC, đồng thời xin cấp lại chứng thư kiểm dịch bổ sung.",
+                        cost: 2800,
+                        time: 28,
+                        freshness: -8,
+                        contChange: { cleared: 0, damaged: 0 },
+                        resultType: "good",
+                        resultTitle: "Xử lý triệt để rủi ro GACC!",
+                        resultStory: "Dù tốn công nhân bốc xếp tại bãi kiểm hóa và mất hơn 1 ngày chờ cơ quan kiểm dịch xác nhận lại, toàn bộ 10 container đều hợp lệ 100% trên hệ thống Tổng cục Hải quan Trung Quốc (GACC), tránh nguy cơ bị đưa vào danh sách đen (Blacklist).",
+                        lesson: "Theo Nghị định thư xuất khẩu sầu riêng sang Trung Quốc, thông tin Mã số vùng trồng (PUC) và Cơ sở đóng gói (PHC) trên bao bì, chứng thư kiểm dịch và hệ thống GACC phải đồng nhất tuyệt đối. Tuyệt đối không dùng 'mã mượn' nếu tem nhãn không khớp."
+                    },
+                    {
+                        id: "B",
+                        tag: "Phương án B • Tách lô linh hoạt",
+                        text: "Làm thủ tục tách vận đơn (Split B/L): Cho thông quan trước 7 container chuẩn hồ sơ để đi giao ngay; 3 container lỗi đưa vào kho lạnh ngoại quan chờ hoàn thiện thủ tục điều chỉnh.",
+                        cost: 1800,
+                        time: 14,
+                        freshness: -4,
+                        contChange: { cleared: 3, damaged: 0 },
+                        resultType: "optimal",
+                        resultTitle: "Tách lô thông minh - Giảm thiểu thiệt hại!",
+                        resultStory: "Quyết định tách lô giúp 7 container sạch hồ sơ vượt qua cửa khẩu nhanh chóng (3 cont đầu tiên đã thông quan thành công!). 3 container còn lại được bảo quản ổn định tại kho lạnh ngoại quan để xử lý tem nhãn mà không kéo lùi tiến độ cả đoàn xe.",
+                        lesson: "Khi gặp sự cố cục bộ trên một vài container, kỹ thuật 'Tách lô / Tách tờ khai' là nghiệp vụ sống còn trong Logistics hàng tươi sống giúp giải phóng phần hàng đạt chuẩn, giảm chi phí lưu bãi tổng thể."
+                    },
+                    {
+                        id: "C",
+                        tag: "Phương án C • Mạo hiểm thông quan",
+                        text: "Giữ nguyên hiện trạng, làm công văn giải trình 'lỗi in ấn hành chính' và xin Hải quan Trung Quốc du di cho thông quan cả 10 container cùng lúc để tiết kiệm thời gian.",
+                        cost: 1200,
+                        time: 36,
+                        freshness: -15,
+                        contChange: { cleared: 0, damaged: 1 },
+                        resultType: "bad",
+                        resultTitle: "Bị từ chối giải trình & Phạt hành chính!",
+                        resultStory: "Hải quan Trung Quốc kiểm soát rất gắt gao quy định truy xuất nguồn gốc nông sản. Công văn bị bác bỏ sau 36 giờ chờ đợi, bạn vẫn buộc phải dán lại tem, tốn phí lưu bãi và 1 container bị mở kiểm tra lâu dưới trời nắng làm sụt giảm chất lượng nghiêm trọng.",
+                        lesson: "Hải quan Trung Quốc áp dụng hệ thống quản lý rủi ro tự động (GACC). Mọi sai lệch về mã truy xuất nguồn gốc đều không thể xử lý bằng 'công văn giải trình cảm tính' mà phải khắc phục đúng thực tế hàng hóa."
+                    }
+                ]
+            },
+            {
+                id: 2,
+                badge: "CHẶNG 2 / 5: KIỂM DỊCH & AN TOÀN THỰC PHẨM",
+                location: "Phòng Kiểm nghiệm Cửa khẩu Bằng Tường",
+                title: "Phân luồng Đỏ & Cảnh báo kiểm tra Cadimi / Vàng O",
+                description: "Do gần đây phát hiện một số lô sầu riêng nhập khẩu vi phạm dư lượng kim loại nặng Cadimi và chất cấm Vàng O (Auramine O - dùng để nhúng tạo màu vỏ vàng đẹp), Hải quan Trung Quốc quyết định phân luồng Đỏ lấy mẫu ngẫu nhiên lô hàng của bạn để xét nghiệm trong phòng Lab.",
+                options: [
+                    {
+                        id: "A",
+                        tag: "Phương án A • Chủ động xuất trình & Test nhanh",
+                        text: "Cung cấp ngay bộ hồ sơ test độc lập đạt chuẩn tại phòng Lab được GACC công nhận trước khi xuất khẩu, đồng thời đăng ký dịch vụ xét nghiệm nhanh (Express Lab) tại cửa khẩu.",
+                        cost: 2200,
+                        time: 16,
+                        freshness: -4,
+                        contChange: { cleared: 2, damaged: 0 },
+                        resultType: "optimal",
+                        resultTitle: "Kết quả âm tính - Vượt rào cản kỹ thuật!",
+                        resultStory: "Nhờ có sẵn chứng thư phân tích dư lượng từ phòng Lab chuẩn quốc tế và chi trả phí test nhanh tại cửa khẩu, kết quả xác nhận sầu riêng hoàn toàn sạch Cadimi và không dùng Vàng O. Thêm 2 container nữa được giải phóng thông quan!",
+                        lesson: "Từ năm 2024-2026, Trung Quốc siết cực chặt chỉ tiêu Cadimi và chất nhuộm Vàng O trên sầu riêng. Doanh nghiệp xuất khẩu bắt buộc phải kiểm soát đất/phân bón tại vùng trồng và tuyệt đối không nhúng hóa chất tạo màu vỏ tại xưởng đóng gói."
+                    },
+                    {
+                        id: "B",
+                        tag: "Phương án B • Chờ quy trình xét nghiệm thường",
+                        text: "Không tốn thêm chi phí dịch vụ test nhanh, chấp nhận xếp hàng chờ phòng Lab hải quan trả kết quả theo quy trình thông thường (mất 2-3 ngày).",
+                        cost: 900,
+                        time: 42,
+                        freshness: -14,
+                        contChange: { cleared: 0, damaged: 0 },
+                        resultType: "warning",
+                        resultTitle: "Đạt chuẩn an toàn nhưng mất nhiều thời gian vàng!",
+                        resultStory: "Kết quả xét nghiệm trả về đạt yêu cầu, tuy nhiên 42 giờ nằm chờ tại bãi kiểm hóa khiến chi phí chạy dầu máy lạnh tăng cao và sầu riêng bắt đầu bước vào giai đoạn chuyển hóa tinh bột sang đường (chín nhanh hơn).",
+                        lesson: "Với mặt hàng có vòng đời ngắn như sầu riêng tươi (chỉ khoảng 7-10 ngày từ lúc cắt đến tay người tiêu dùng), tiết kiệm chi phí dịch vụ nhưng mất 2 ngày chờ đợi thường gây thiệt hại lớn hơn nhiều do giảm độ tươi."
+                    },
+                    {
+                        id: "C",
+                        tag: "Phương án C • Xin miễn giảm kiểm tra",
+                        text: "Yêu cầu đại lý hải quan khiếu nại lên lãnh đạo chi cục xin miễn lấy mẫu vì doanh nghiệp đã xuất khẩu nhiều chuyến trước đó không vi phạm.",
+                        cost: 1500,
+                        time: 30,
+                        freshness: -12,
+                        contChange: { cleared: 0, damaged: 1 },
+                        resultType: "bad",
+                        resultTitle: "Bị nâng mức cảnh báo kiểm tra 100%!",
+                        resultStory: "Việc né tránh lấy mẫu an toàn thực phẩm khiến hệ thống hải quan nghi ngờ, nâng cấp độ kiểm tra lên toàn bộ các container còn lại. Thời gian kéo dài làm 1 container sầu riêng già tuổi bị chín nứt vỏ ngay tại bãi.",
+                        lesson: "Trong thương mại quốc tế, khi bị phân luồng Đỏ về An toàn thực phẩm (SPS), hợp tác minh bạch và cung cấp dữ liệu truy xuất nhanh là cách duy nhất để rút ngắn thời gian."
+                    }
+                ]
+            },
+            {
+                id: 3,
+                badge: "CHẶNG 3 / 5: SỰ CỐ CONTAINER LẠNH (REEFER)",
+                location: "Bãi chờ trung chuyển - Nhiệt độ ngoài trời 38°C",
+                title: "2 Container lạnh báo lỗi máy nén, nhiệt độ tăng lên 21°C!",
+                description: "Giữa trưa nắng gắt 38°C, hệ thống giám sát từ xa báo động: 2 container sầu riêng đang chờ ở bãi có máy nén lạnh (Compressor) hoạt động chập chờn do thiếu gas và quá tải điện bãi xe. Nhiệt độ bên trong đã tăng từ 13.5°C lên 21°C. Nếu không xử lý trong vài giờ, sầu riêng sẽ tự sinh nhiệt (hô hấp đỉnh) và chín hỏng toàn bộ!",
+                options: [
+                    {
+                        id: "A",
+                        tag: "Phương án A • Thuê xe cứu hộ lạnh & Đảo hàng (Cross-docking)",
+                        text: "Gọi ngay đội kỹ thuật lạnh lưu động đến nạp gas/sửa tại chỗ; đồng thời điều 1 container lạnh dự phòng đến bãi để đảo hàng (sang cont) ngay cho container bị hỏng nặng.",
+                        cost: 2600,
+                        time: 8,
+                        freshness: -3,
+                        contChange: { cleared: 1, damaged: 0 },
+                        resultType: "optimal",
+                        resultTitle: "Cấp cứu chuỗi lạnh thành công ngoạn mục!",
+                        resultStory: "Đội kỹ thuật có mặt sau 2 giờ, khôi phục nhiệt độ về 13.5°C kịp thời trước khi trái sầu riêng bước vào chu kỳ tự sinh nhiệt. Toàn bộ 18 tấn sầu riêng trong 2 container này được bảo toàn độ tươi nguyên vẹn!",
+                        lesson: "Sầu riêng là loại quả có cường độ hô hấp rất mạnh (climacteric fruit). Khi nhiệt độ tăng, trái tự tỏa nhiệt làm nhiệt độ tăng theo cấp số nhân. Luôn phải có hợp đồng bảo trì lạnh khẩn cấp 24/7 dọc tuyến biên giới."
+                    },
+                    {
+                        id: "B",
+                        tag: "Phương án B • Chờ thợ sửa của hãng tàu",
+                        text: "Báo hãng tàu cử kỹ thuật viên theo diện bảo hành miễn phí (mất khoảng 18-20 tiếng để kỹ thuật viên di chuyển từ cảng Hải Phòng lên cửa khẩu).",
+                        cost: 400,
+                        time: 20,
+                        freshness: -16,
+                        contChange: { cleared: 0, damaged: 1 },
+                        resultType: "bad",
+                        resultTitle: "Chậm trễ giờ vàng - 1 Container bị chín ép!",
+                        resultStory: "Tiết kiệm được phí sửa chữa nhưng 20 giờ ở nhiệt độ trên 22°C đã kích hoạt quá trình chín đồng loạt. Khi thợ hãng tàu lên tới nơi, 1 container đã bốc mùi thơm nồng nặc, vỏ bắt đầu tách múi, buộc phải loại bỏ khỏi lô xuất khẩu chính ngạch.",
+                        lesson: "Trong chuỗi cung ứng lạnh (Cold Chain), 'bảo hành miễn phí nhưng chậm trễ' là cái bẫy đắt giá nhất. Chi phí sửa chữa $2,000 nhỏ hơn rất nhiều so với giá trị $75,000 của một container sầu riêng."
+                    },
+                    {
+                        id: "C",
+                        tag: "Phương án C • Mở hé cửa container cho thoáng khí",
+                        text: "Tắt máy lạnh bị lỗi, mở hé cửa sau của 2 container dưới bóng râm để gió tự nhiên lùa vào giảm bớt hơi nóng hầm bí.",
+                        cost: 0,
+                        time: 12,
+                        freshness: -25,
+                        contChange: { cleared: 0, damaged: 2 },
+                        resultType: "bad",
+                        resultTitle: "Thảm họa sốc nhiệt & Mất toàn bộ 2 Container!",
+                        resultStory: "Mở cửa container giữa trời nóng 38°C làm hơi ẩm ngưng tụ, sầu riêng bị sốc nhiệt, hấp hơi và thối cuống hàng loạt. Cả 2 container (36 tấn hàng) bị hủy bỏ hoàn toàn!",
+                        lesson: "Tuyệt đối không bao giờ mở cửa container lạnh khi hàng chưa đến điểm dỡ hàng trong điều kiện thời tiết nóng ẩm, vì sự chênh lệch nhiệt độ sẽ phá hủy cấu trúc vỏ và làm nấm bệnh bùng phát."
+                    }
+                ]
+            },
+            {
+                id: 4,
+                badge: "CHẶNG 4 / 5: ÙN TẮC VẬN TẢI BIÊN GIỚI",
+                location: "Cửa khẩu Quốc tế Hữu Nghị - Bằng Tường",
+                title: "Cao điểm vụ thu hoạch: Thiếu đầu kéo Trung Quốc & Cước tăng gấp đôi",
+                description: "Các container đã đủ điều kiện thông quan, nhưng cửa khẩu đang bước vào cao điểm xuất khẩu nông sản. Hàng trăm xe nối đuôi nhau kéo dài 5km. Do quy định giao nhận hàng tại bãi trung chuyển, phía Trung Quốc đang khan hiếm xe đầu kéo nội địa và tài xế, giá cước kéo cont về chợ đầu mối tăng vọt.",
+                options: [
+                    {
+                        id: "A",
+                        tag: "Phương án A • Chấp nhận giá cước Spot & Đặt xe ưu tiên",
+                        text: "Chấp nhận trả mức cước thị trường (Spot rate) cao hơn dự toán $2,400 cho toàn đoàn xe để ký hợp đồng với đội xe vận tải lớn tại Bằng Tường, đảm bảo có xe sang tải ngay trong đêm.",
+                        cost: 2400,
+                        time: 10,
+                        freshness: -3,
+                        contChange: { cleared: 3, damaged: 0 },
+                        resultType: "optimal",
+                        resultTitle: "Thông tuyến thần tốc trong đêm!",
+                        resultStory: "Đội xe đầu kéo Trung Quốc vào bãi sang tải ngay trong đêm, đưa toàn bộ các container còn lại vượt qua điểm nghẽn cửa khẩu hướng thẳng về chợ đầu mối.",
+                        lesson: "Vào mùa cao điểm nông sản, năng lực vận tải (Capacity) quan trọng hơn giá cước. Chốt xe nhanh giúp tránh được phí lưu bãi (DEM/DET) và giữ được giá bán tốt tại chợ đầu mối."
+                    },
+                    {
+                        id: "B",
+                        tag: "Phương án B • Chuyển hướng sang cửa khẩu phụ (Tân Thanh / Chi Ma)",
+                        text: "Quay đầu đoàn xe di chuyển sang cửa khẩu Tân Thanh cách đó 30km để tìm luồng thông quan vắng hơn.",
+                        cost: 1700,
+                        time: 24,
+                        freshness: -9,
+                        contChange: { cleared: 1, damaged: 0 },
+                        resultType: "warning",
+                        resultTitle: "Mất thời gian làm lại thủ tục chuyển cửa khẩu!",
+                        resultStory: "Dù bên Tân Thanh vắng xe hơn, nhưng bạn phải làm thủ tục hủy tờ khai cũ và khai báo lại tuyến vận chuyển mới mất trọn 1 ngày. Hàng vẫn qua được nhưng quỹ thời gian đã cạn dần.",
+                        lesson: "Việc chuyển cửa khẩu xuất hàng sau khi đã mở tờ khai đòi hỏi thủ tục hải quan phức tạp và phải cập nhật lại giấy kiểm dịch, chỉ nên dùng khi cửa khẩu chính đóng cửa hoàn toàn."
+                    },
+                    {
+                        id: "C",
+                        tag: "Phương án C • Nằm chờ tại bãi thêm 2 ngày đợi giá cước hạ",
+                        text: "Không chấp nhận bị 'ép giá' vận tải, cho đoàn xe nằm chờ tại bãi 2 ngày để đợi lưu lượng xe giảm bớt rồi mới thuê xe giá rẻ.",
+                        cost: 1400,
+                        time: 48,
+                        freshness: -18,
+                        contChange: { cleared: 0, damaged: 1 },
+                        resultType: "bad",
+                        resultTitle: "Tiền dầu & Lưu bãi vượt quá tiền cước tiết kiệm!",
+                        resultStory: "Sau 48 giờ nằm chờ, tiền phí lưu bãi và nhiên liệu chạy máy lạnh cho đoàn xe đã ngốn hết $1,400, trong khi sầu riêng bị già thêm 2 ngày khiến 1 container bị nứt gai.",
+                        lesson: "Trong quản trị chuỗi cung ứng hàng tươi sống, chi phí cơ hội của thời gian (Time-to-market) luôn cao hơn chênh lệch cước vận tải."
+                    }
+                ]
+            },
+            {
+                id: 5,
+                badge: "CHẶNG 5 / 5: ĐÀM PHÁN THƯƠNG MẠI CUỐI CÙNG",
+                location: "Chợ Đầu Mối Nông Sản Giang Nam - Quảng Châu / Bằng Tường",
+                title: "Đối tác Trung Quốc ép giảm giá 20% vì hàng đến trễ & có dấu hiệu chín",
+                description: "Đoàn container của bạn đã tới bãi giao hàng cho nhà nhập khẩu Trung Quốc. Tuy nhiên, do tổng thời gian hành trình kéo dài, khoảng 15% số sầu riêng đã bắt đầu chuyển sang chín tới (bán ngay trong 1-2 ngày thì cực ngon nhưng khó vận chuyển đi các tỉnh xa phía Bắc như Bắc Kinh, Thượng Hải). Thương lái Trung Quốc lấy cớ này đòi giảm giá 20% toàn bộ lô hàng!",
+                options: [
+                    {
+                        id: "A",
+                        tag: "Phương án A • Phân loại & Bán đa kênh thông minh",
+                        text: "Đàm phán tách làm 2 nhóm hàng: Nhóm 85% còn xanh/cứng gai giữ nguyên giá hợp đồng để đối tác đi các tỉnh xa; nhóm 15% chín tới chiết khấu nhẹ 10% và kết nối bán thẳng cho chuỗi siêu thị/tiểu thương tiêu thụ ngay tại Quảng Châu.",
+                        cost: 800,
+                        time: 6,
+                        freshness: -2,
+                        contChange: { cleared: 10, damaged: 0 },
+                        resultType: "optimal",
+                        resultTitle: "Chốt đơn thành công - Bảo toàn tối đa lợi nhuận!",
+                        resultStory: "Giải pháp phân loại tại chỗ thuyết phục hoàn toàn đối tác Trung Quốc! Nhóm hàng chín tới tiêu thụ cực chạy tại thị trường nội tỉnh Quảng Đông nhờ độ ngọt đậm, còn hàng cứng gai vẫn đi tuyến đường dài bình thường.",
+                        lesson: "Kỹ năng đàm phán thương mại quốc tế đỉnh cao là không giảm giá cào bằng toàn lô hàng, mà phân loại chất lượng (Grading) để đưa từng phân khúc vào đúng kênh tiêu thụ phù hợp nhất."
+                    },
+                    {
+                        id: "B",
+                        tag: "Phương án B • Chấp nhận giảm giá 15% toàn lô để thu hồi vốn nhanh",
+                        text: "Nhượng bộ giảm giá 15% cho toàn bộ lô hàng để đối tác nhận hàng ngay lập tức, giải phóng container rỗng trả hãng tàu.",
+                        cost: 2200,
+                        time: 4,
+                        freshness: -1,
+                        contChange: { cleared: 10, damaged: 0 },
+                        resultType: "good",
+                        resultTitle: "Giao hàng an toàn nhưng giảm biên lợi nhuận!",
+                        resultStory: "Đối tác vui vẻ nhận toàn bộ hàng và thanh toán ngay trong ngày. Lô hàng được giải cứu hoàn toàn khỏi nguy cơ hư hỏng, dù doanh nghiệp phải chịu giảm một phần lợi nhuận kỳ vọng.",
+                        lesson: "Trong tình huống hàng nông sản đã cận ngày chín, 'cắt lỗ nhẹ để thu tiền tươi' vẫn là quyết định an toàn hơn so với việc ôm hàng chờ đợi."
+                    },
+                    {
+                        id: "C",
+                        tag: "Phương án C • Cứng rắn giữ giá, dọa kéo hàng đi tìm mối khác",
+                        text: "Từ chối mọi mức giảm giá, giữ nguyên container tại bãi chợ đầu mối thêm 36 giờ để tự đi chào bán cho các thương lái khác.",
+                        cost: 1900,
+                        time: 36,
+                        freshness: -22,
+                        contChange: { cleared: 0, damaged: 2 },
+                        resultType: "bad",
+                        resultTitle: "Sầu riêng chín bung vỏ - Thiệt hại nặng nề!",
+                        resultStory: "Tại chợ đầu mối Trung Quốc, các thương lái liên kết thông tin rất chặt. Sau 36 giờ không bán được, số sầu riêng chín tới bị nứt vỏ hàng loạt, bạn buộc phải bán tháo giá rẻ như cho 2 container bị hỏng nặng.",
+                        lesson: "Không nên đối đầu trực diện khi sản phẩm đang ở thế bất lợi về hạn sử dụng (Shelf-life) ngay trên sân nhà của người mua."
+                    }
+                ]
+            }
+        ];
+
+        // Trạng thái game (State)
+        let gameState = {
+            currentStageIndex: 0,
+            budget: 15000,
+            maxBudget: 15000,
+            timeLeft: 120, // giờ
+            maxTime: 120,
+            freshness: 100, // %
+            // Trạng thái 10 container: 'stuck' (đang kẹt), 'cleared' (thông quan), 'damaged' (hỏng/trả về)
+            containers: Array(10).fill('stuck'),
+            history: []
+        };
+
+        // Khởi tạo / Render 10 container trên Dashboard
+        function renderContainers() {
+            const grid = document.getElementById('containers-grid');
+            grid.innerHTML = '';
+
+            gameState.containers.forEach((status, index) => {
+                const contNum = (index + 1).toString().padStart(2, '0');
+                let bgClass = '';
+                let iconClass = '';
+                let statusText = '';
+
+                if (status === 'stuck') {
+                    bgClass = 'bg-amber-500/20 border-amber-500/60 text-amber-300 cont-warning';
+                    iconClass = 'fa-snowflake';
+                    statusText = 'Kẹt';
+                } else if (status === 'cleared') {
+                    bgClass = 'bg-emerald-500/25 border-emerald-500 text-emerald-300';
+                    iconClass = 'fa-circle-check';
+                    statusText = 'Xong';
+                } else {
+                    bgClass = 'bg-rose-600/25 border-rose-500 text-rose-300 opacity-80';
+                    iconClass = 'fa-circle-xmark';
+                    statusText = 'Hỏng';
+                }
+
+                const el = document.createElement('div');
+                el.className = `border rounded-lg p-1.5 flex flex-col items-center justify-center transition-all duration-300 ${bgClass}`;
+                el.innerHTML = `
+                    <div class="flex items-center gap-1 text-[10px] font-bold">
+                        <i class="fa-solid ${iconClass}"></i>
+                        <span>#${contNum}</span>
+                    </div>
+                    <span class="text-[9px] uppercase tracking-tighter mt-0.5 font-medium">${statusText}</span>
+                `;
+                grid.appendChild(el);
+            });
+        }
+
+        // Cập nhật 3 thanh chỉ số sinh tồn
+        function updateDashboardUI() {
+            // Ngân sách
+            const budgetPct = Math.max(0, Math.min(100, (gameState.budget / gameState.maxBudget) * 100));
+            document.getElementById('stat-budget-text').textContent = `$${gameState.budget.toLocaleString()}`;
+            const budgetBar = document.getElementById('stat-budget-bar');
+            budgetBar.style.width = `${budgetPct}%`;
+            if (gameState.budget < 3000) {
+                budgetBar.className = 'bg-rose-500 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-budget-text').className = 'text-sm font-bold text-rose-400';
+            } else {
+                budgetBar.className = 'bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-budget-text').className = 'text-sm font-bold text-amber-400';
+            }
+
+            // Thời gian
+            const timePct = Math.max(0, Math.min(100, (gameState.timeLeft / gameState.maxTime) * 100));
+            const days = (gameState.timeLeft / 24).toFixed(1);
+            document.getElementById('stat-time-text').textContent = `${gameState.timeLeft} giờ (${days} ngày)`;
+            const timeBar = document.getElementById('stat-time-bar');
+            timeBar.style.width = `${timePct}%`;
+            if (gameState.timeLeft < 24) {
+                timeBar.className = 'bg-rose-500 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-time-text').className = 'text-sm font-bold text-rose-400';
+            } else {
+                timeBar.className = 'bg-gradient-to-r from-sky-500 to-cyan-400 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-time-text').className = 'text-sm font-bold text-sky-400';
+            }
+
+            // Độ tươi
+            const freshPct = Math.max(0, Math.min(100, gameState.freshness));
+            document.getElementById('stat-freshness-text').textContent = `${freshPct}%`;
+            const freshBar = document.getElementById('stat-freshness-bar');
+            freshBar.style.width = `${freshPct}%`;
+            if (freshPct < 55) {
+                freshBar.className = 'bg-rose-500 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-freshness-text').className = 'text-sm font-bold text-rose-400';
+            } else if (freshPct < 75) {
+                freshBar.className = 'bg-amber-500 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-freshness-text').className = 'text-sm font-bold text-amber-400';
+            } else {
+                freshBar.className = 'bg-gradient-to-r from-emerald-600 to-lime-400 h-2 rounded-full transition-all duration-500';
+                document.getElementById('stat-freshness-text').className = 'text-sm font-bold text-emerald-400';
+            }
+
+            // Chỉ báo chặng
+            document.getElementById('stage-indicator').textContent = `Chặng ${Math.min(5, gameState.currentStageIndex + 1)} / 5`;
+
+            renderContainers();
+        }
+
+        // Bắt đầu game
+        function startGame() {
+            document.getElementById('screen-intro').classList.add('hidden');
+            document.getElementById('dashboard-header').classList.remove('hidden');
+            updateDashboardUI();
+            loadStage(0);
+        }
+
+        // Tải nội dung chặng
+        function loadStage(index) {
+            const stage = STAGES[index];
+            document.getElementById('screen-feedback').classList.add('hidden');
+            const stageScreen = document.getElementById('screen-stage');
+            stageScreen.classList.remove('hidden');
+            stageScreen.classList.remove('fade-in');
+            void stageScreen.offsetWidth; // trigger reflow
+            stageScreen.classList.add('fade-in');
+
+            document.getElementById('stage-badge').textContent = stage.badge;
+            document.getElementById('stage-location').innerHTML = `<i class="fa-solid fa-location-dot text-rose-400"></i> ${stage.location}`;
+            document.getElementById('stage-title').textContent = stage.title;
+            document.getElementById('stage-description').textContent = stage.description;
+
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            stage.options.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500/70 rounded-xl p-4 transition-all group cursor-pointer shadow-md';
+                btn.onclick = () => selectOption(opt);
+
+                btn.innerHTML = `
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 group-hover:text-lime-300">
+                            ${opt.tag}
+                        </span>
+                        <span class="text-[11px] text-slate-400 bg-slate-900/90 px-2.5 py-0.5 rounded-md border border-slate-700/80">
+                            Dự kiến: -$${opt.cost.toLocaleString()} | -${opt.time}h
+                        </span>
+                    </div>
+                    <p class="text-sm sm:text-base text-slate-100 font-medium leading-snug group-hover:text-white">
+                        ${opt.text}
+                    </p>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        // Xử lý khi người chơi chọn phương án
+        function selectOption(option) {
+            const stage = STAGES[gameState.currentStageIndex];
+
+            // Cập nhật chỉ số
+            gameState.budget = Math.max(0, gameState.budget - option.cost);
+            gameState.timeLeft = Math.max(0, gameState.timeLeft - option.time);
+            gameState.freshness = Math.max(0, Math.min(100, gameState.freshness + option.freshness));
+
+            // Cập nhật trạng thái các container
+            let clearedToAdd = option.contChange.cleared;
+            let damagedToAdd = option.contChange.damaged;
+
+            // Đánh dấu container hỏng trước (từ cuối danh sách đang kẹt)
+            for (let i = gameState.containers.length - 1; i >= 0 && damagedToAdd > 0; i--) {
+                if (gameState.containers[i] === 'stuck') {
+                    gameState.containers[i] = 'damaged';
+                    damagedToAdd--;
+                }
+            }
+
+            // Đánh dấu container thông quan (từ đầu danh sách đang kẹt)
+            for (let i = 0; i < gameState.containers.length && clearedToAdd > 0; i++) {
+                if (gameState.containers[i] === 'stuck') {
+                    gameState.containers[i] = 'cleared';
+                    clearedToAdd--;
+                }
+            }
+
+            // Nếu là chặng cuối cùng và người chơi không bị Game Over, chuyển tất cả container đang 'stuck' còn lại thành 'cleared'
+            if (gameState.currentStageIndex === STAGES.length - 1 && option.contChange.cleared === 10) {
+                for (let i = 0; i < gameState.containers.length; i++) {
+                    if (gameState.containers[i] === 'stuck') {
+                        gameState.containers[i] = 'cleared';
+                    }
+                }
+            }
+
+            // Lưu lịch sử quyết định
+            gameState.history.push({
+                stageNum: stage.id,
+                stageTitle: stage.title,
+                choiceTag: option.tag,
+                choiceText: option.text,
+                resultType: option.resultType,
+                cost: option.cost,
+                time: option.time,
+                freshness: option.freshness,
+                lesson: option.lesson
+            });
+
+            updateDashboardUI();
+            showFeedback(option);
+        }
+
+        // Hiển thị màn hình phản hồi kết quả chặng
+        function showFeedback(option) {
+            document.getElementById('screen-stage').classList.add('hidden');
+            const fbScreen = document.getElementById('screen-feedback');
+            fbScreen.classList.remove('hidden');
+            fbScreen.classList.remove('fade-in');
+            void fbScreen.offsetWidth;
+            fbScreen.classList.add('fade-in');
+
+            document.getElementById('fb-stage-num').textContent = gameState.currentStageIndex + 1;
+            document.getElementById('feedback-title').textContent = option.resultTitle;
+            document.getElementById('feedback-story').textContent = option.resultStory;
+            document.getElementById('feedback-lesson').textContent = option.lesson;
+
+            // Icon & màu sắc theo loại kết quả
+            const iconBox = document.getElementById('feedback-icon-box');
+            if (option.resultType === 'optimal') {
+                iconBox.className = 'w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-400 flex items-center justify-center text-2xl';
+                iconBox.innerHTML = '<i class="fa-solid fa-award"></i>';
+            } else if (option.resultType === 'good' || option.resultType === 'warning') {
+                iconBox.className = 'w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500 text-amber-400 flex items-center justify-center text-2xl';
+                iconBox.innerHTML = '<i class="fa-solid fa-scale-balanced"></i>';
+            } else {
+                iconBox.className = 'w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500 text-rose-400 flex items-center justify-center text-2xl';
+                iconBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            }
+
+            // Hiển thị biến động chỉ số
+            document.getElementById('fb-delta-budget').innerHTML = `<span class="text-rose-400">-$${option.cost.toLocaleString()}</span>`;
+            document.getElementById('fb-delta-time').innerHTML = `<span class="text-amber-400">-${option.time} giờ</span>`;
+            document.getElementById('fb-delta-freshness').innerHTML = `<span class="${option.freshness <= -12 ? 'text-rose-400' : 'text-sky-400'}">${option.freshness}%</span>`;
+
+            const clearedCount = gameState.containers.filter(c => c === 'cleared').length;
+            const damagedCount = gameState.containers.filter(c => c === 'damaged').length;
+            document.getElementById('fb-delta-containers').innerHTML = `
+                <span class="text-emerald-400">${clearedCount} Xong</span> / <span class="text-rose-400">${damagedCount} Hỏng</span>
+            `;
+
+            // Kiểm tra điều kiện thua sớm (Game Over) hoặc hết chặng
+            const btnNext = document.getElementById('btn-next-stage');
+            const isFailedEarly = gameState.budget <= 0 || gameState.timeLeft <= 0 || gameState.freshness <= 40 || damagedCount >= 5;
+
+            if (isFailedEarly) {
+                btnNext.innerHTML = `<span>XEM BÁO CÁO TỔNG KẾT THẤT BẠI</span> <i class="fa-solid fa-flag-checkered"></i>`;
+                btnNext.className = 'w-full py-3.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer';
+            } else if (gameState.currentStageIndex === STAGES.length - 1) {
+                btnNext.innerHTML = `<span>HOÀN TẤT CHIẾN DỊCH & XEM TỔNG KẾT</span> <i class="fa-solid fa-trophy"></i>`;
+                btnNext.className = 'w-full py-3.5 bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950 font-extrabold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer';
+            } else {
+                btnNext.innerHTML = `<span>TIẾP TỤC CHẶNG ${gameState.currentStageIndex + 2} / 5</span> <i class="fa-solid fa-chevron-right"></i>`;
+                btnNext.className = 'w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer';
+            }
+        }
+
+        // Chuyển sang chặng tiếp theo hoặc màn hình kết thúc
+        function nextStage() {
+            const damagedCount = gameState.containers.filter(c => c === 'damaged').length;
+            const isFailedEarly = gameState.budget <= 0 || gameState.timeLeft <= 0 || gameState.freshness <= 40 || damagedCount >= 5;
+
+            if (isFailedEarly || gameState.currentStageIndex >= STAGES.length - 1) {
+                showEnding();
+            } else {
+                gameState.currentStageIndex++;
+                updateDashboardUI();
+                loadStage(gameState.currentStageIndex);
+            }
+        }
+
+        // Hiển thị màn hình kết thúc & phân tích tổng kết
+        function showEnding() {
+            document.getElementById('screen-feedback').classList.add('hidden');
+            const endScreen = document.getElementById('screen-ending');
+            endScreen.classList.remove('hidden');
+            endScreen.classList.remove('fade-in');
+            void endScreen.offsetWidth;
+            endScreen.classList.add('fade-in');
+
+            const clearedCount = gameState.containers.filter(c => c === 'cleared').length;
+            const damagedCount = gameState.containers.filter(c => c === 'damaged').length;
+
+            const badge = document.getElementById('ending-badge');
+            const title = document.getElementById('ending-title');
+            const subtitle = document.getElementById('ending-subtitle');
+
+            // Đánh giá xếp hạng kết thúc
+            const isGameOver = gameState.budget <= 0 || gameState.timeLeft <= 0 || gameState.freshness <= 40 || clearedCount < 6;
+
+            if (isGameOver) {
+                badge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-500/20 border border-rose-500 text-rose-400 text-xs font-extrabold uppercase tracking-widest mb-3';
+                badge.innerHTML = '<i class="fa-solid fa-skull-crossbones"></i> CHIẾN DỊCH THẤT BẠI (GAME OVER)';
+                title.textContent = 'LÔ HÀNG THUA LỖ NẶNG TẠI CỬA KHẨU!';
+                title.className = 'text-2xl sm:text-4xl font-extrabold text-rose-400 mb-2';
+
+                let failReason = '';
+                if (gameState.budget <= 0) failReason = 'Bạn đã cạn kiệt toàn bộ $15,000 ngân sách xử lý sự cố trước khi giải cứu xong đoàn xe.';
+                else if (gameState.timeLeft <= 0) failReason = 'Đã hết 120 giờ vàng! Sầu riêng chín ép đồng loạt trong container và không còn giá trị thương mại.';
+                else if (gameState.freshness <= 40) failReason = `Độ tươi sầu riêng giảm xuống chỉ còn ${gameState.freshness}%, không đủ tiêu chuẩn tiêu thụ trên thị trường.`;
+                else failReason = `Có tới ${damagedCount}/10 container bị hư hỏng hoặc hải quan từ chối thông quan, gây thiệt hại hàng chục tỷ đồng.`;
+
+                subtitle.textContent = failReason;
+            } else if (clearedCount >= 9 && gameState.freshness >= 75 && gameState.budget >= 3500) {
+                badge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs font-extrabold uppercase tracking-widest mb-3';
+                badge.innerHTML = '<i class="fa-solid fa-crown"></i> KẾT THÚC XUẤT SẮC • CHUYÊN GIA LOGISTICS';
+                title.textContent = `GIẢI CỨU THÀNH CÔNG ${clearedCount}/10 CONTAINER!`;
+                title.className = 'text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-lime-300 mb-2';
+                subtitle.textContent = 'Bản lĩnh điều hành tuyệt vời! Bạn đã xử lý chuẩn xác các rào cản GACC, bảo toàn chuỗi lạnh và tối ưu chi phí, giúp doanh nghiệp thu về lợi nhuận cao.';
+            } else {
+                badge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 text-xs font-extrabold uppercase tracking-widest mb-3';
+                badge.innerHTML = '<i class="fa-solid fa-check-double"></i> KẾT THÚC KHẢ QUAN • HOÀN THÀNH NHIỆM VỤ';
+                title.textContent = `THÔNG QUAN ĐƯỢC ${clearedCount}/10 CONTAINER`;
+                title.className = 'text-2xl sm:text-4xl font-extrabold text-amber-400 mb-2';
+                subtitle.textContent = 'Bạn đã đưa được đa số lô hàng vượt qua cửa khẩu an toàn. Tuy nhiên, một số quyết định chưa tối ưu đã làm tăng chi phí phát sinh và giảm biên lợi nhuận.';
+            }
+
+            // Cập nhật các thẻ thống kê cuối
+            document.getElementById('end-stat-cont').textContent = `${clearedCount} / 10`;
+            document.getElementById('end-stat-budget').textContent = `$${gameState.budget.toLocaleString()}`;
+            document.getElementById('end-stat-time').textContent = `${gameState.timeLeft} giờ`;
+            document.getElementById('end-stat-freshness').textContent = `${gameState.freshness}%`;
+
+            // Render nhật ký lịch sử quyết định
+            const historyList = document.getElementById('decision-history-list');
+            historyList.innerHTML = '';
+
+            gameState.history.forEach((item) => {
+                let borderCol = 'border-slate-700';
+                let badgeCol = 'text-amber-400';
+                if (item.resultType === 'optimal') {
+                    borderCol = 'border-emerald-500/40';
+                    badgeCol = 'text-emerald-400';
+                } else if (item.resultType === 'bad') {
+                    borderCol = 'border-rose-500/40';
+                    badgeCol = 'text-rose-400';
+                }
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-800/70 border ${borderCol} rounded-xl p-3.5 text-left`;
+                card.innerHTML = `
+                    <div class="flex flex-wrap justify-between items-center gap-1 mb-1">
+                        <span class="text-xs font-bold text-white">Chặng ${item.stageNum}: ${item.stageTitle}</span>
+                        <span class="text-[11px] font-semibold ${badgeCol}">${item.choiceTag}</span>
+                    </div>
+                    <p class="text-xs text-slate-300 mb-2">Đã chọn: <em>"${item.choiceText}"</em></p>
+                    <div class="text-[11px] text-sky-300 bg-sky-950/50 px-2.5 py-1.5 rounded-lg border border-sky-800/50">
+                        <strong>Bài học:</strong> ${item.lesson}
+                    </div>
+                `;
+                historyList.appendChild(card);
+            });
+        }
+
+        // Chơi lại từ đầu
+        function resetGame() {
+            gameState = {
+                currentStageIndex: 0,
+                budget: 15000,
+                maxBudget: 15000,
+                timeLeft: 120,
+                maxTime: 120,
+                freshness: 100,
+                containers: Array(10).fill('stuck'),
+                history: []
+            };
+            document.getElementById('screen-ending').classList.add('hidden');
+            updateDashboardUI();
+            loadStage(0);
+        }
+    </script>
+</body>
+</html>
